@@ -1,0 +1,62 @@
+/* Main container for property details */
+.property-details-div {
+    max-width: 800px; /* Max width for the details box */
+    margin: 40px auto; /* Center it horizontally with some space on top */
+    padding: 20px; /* Padding inside the container */
+    background-color: #fff; /* White background for the details box */
+    border-radius: 10px; /* Rounded corners */
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); /* Soft shadow for depth */
+  }
+  
+  /* Property Image */
+  .property-img {
+    width: 100%;
+    height: 300px; /* Fixed height for the image */
+    overflow: hidden;
+    border-radius: 8px;
+    margin-bottom: 20px;
+  }
+  
+  .property-img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* Ensure the image covers the area */
+  }
+  
+  /* Property Title */
+  .property-details-div h1 {
+    font-size: 2rem; /* Title size */
+    margin-bottom: 15px;
+    font-weight: bold;
+    text-align: center; /* Center the title */
+  }
+  
+  /* Property Details Paragraph */
+  .property-details-div p {
+    font-size: 1rem; /* Smaller font size for details */
+    margin: 8px 0; /* Space between paragraphs */
+    color: #555; /* Lighter color for text */
+  }
+  
+  /* Property Labels */
+  .property-details-div strong {
+    font-weight: 600; /* Bold font for labels */
+    color: #333; /* Dark text color */
+  }
+  
+  /* Back Button */
+  .back-button {
+    display: inline-block;
+    background-color: #007bff;
+    color: white;
+    padding: 10px 15px;
+    border-radius: 5px;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+  }
+  
+  .back-button:hover {
+    background-color: #0056b3;
+  }
+  

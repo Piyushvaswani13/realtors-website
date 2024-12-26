@@ -1,0 +1,80 @@
+.filters {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 20px;
+    background-color: #f8f8f8;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+  
+  .filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .filter-group label {
+    font-size: 14px;
+    font-weight: 500;
+    color: #333;
+    margin-bottom: 5px;
+  }
+  
+  .filter-group select {
+    padding: 10px;
+    font-size: 14px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background-color: white;
+    cursor: pointer;
+    transition: border-color 0.3s ease;
+  }
+  
+  .filter-group select:focus {
+    border-color: #0056b3;
+    outline: none;
+  }
+  
+  .filter-group select option {
+    font-size: 14px;
+    padding: 10px;
+  }
+  
+  .filters .filter-group:nth-child(1),
+  .filters .filter-group:nth-child(2) {
+    flex-direction: row;
+    justify-content: space-between;
+  }
+  
+  .filters .filter-group:nth-child(1) select,
+  .filters .filter-group:nth-child(2) select {
+    width: 48%;
+  }
+  
+  .filters .filter-group:nth-child(1) label,
+  .filters .filter-group:nth-child(2) label {
+    margin-bottom: 5px;
+  }
+  
+  @media (max-width: 768px) {
+    .filters {
+      padding: 15px;
+    }
+  
+    .filter-group {
+      flex-direction: column;
+      gap: 15px;
+    }
+  
+    .filters .filter-group:nth-child(1),
+    .filters .filter-group:nth-child(2) {
+      flex-direction: column;
+    }
+  
+    .filters .filter-group:nth-child(1) select,
+    .filters .filter-group:nth-child(2) select {
+      width: 100%;
+    }
+  }
+  

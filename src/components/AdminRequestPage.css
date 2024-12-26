@@ -1,0 +1,49 @@
+/* AdminRequestPage.css */
+.admin-request-page {
+    background-color: #f8f9fa;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+  
+  .admin-request-page h2 {
+    font-size: 24px;
+    color: #333;
+    margin-bottom: 20px;
+  }
+  
+  .admin-request-page ul {
+    list-style-type: none;
+    padding: 0;
+  }
+  
+  .admin-request-page li {
+    background-color: #ffffff;
+    margin-bottom: 15px;
+    padding: 15px;
+    border-radius: 5px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  }
+  
+  .admin-request-page button {
+    background-color: #28a745;
+    border-radius: 5px;
+    border: none;
+    color: white;
+    font-size: 16px;
+    padding: 10px;
+    cursor: pointer;
+  }
+  
+  .admin-request-page button:hover {
+    background-color: #218838;
+  }
+  
+  .admin-request-page p {
+    text-align: center;
+    color: #007bff;
+  }
+  
