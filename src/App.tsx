@@ -19,6 +19,14 @@ function App() {
     <Router>
       <Routes>
       <Route path="/" element={<PropertyList />} />
+      <Route path="/properties" element={<PropertyList />} />
+      {/* <Route path="/properties/:filterType/:filterValue" element={<PropertyList />} /> */}
+      {/* Add routes for categorized searches */}
+      <Route path="/properties/city/:city" element={<PropertyList />} />
+            <Route path="/properties/state/:state" element={<PropertyList />} />
+            <Route path="/properties/locality/:locality" element={<PropertyList />} />
+            <Route path="/properties/country/:country" element={<PropertyList />} />
+            <Route path="/properties/pincode/:pincode" element={<PropertyList />} />
         <Route path="/home" element={<HomePage />} />
         <Route path="/register" element={<Register />} />
         <Route path="/login" element={<Login />} />

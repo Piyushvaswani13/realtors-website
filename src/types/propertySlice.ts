@@ -1,42 +1,53 @@
-import { createSlice, createAsyncThunk  } from "@reduxjs/toolkit";
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 
 // Define Property type
 interface Property {
   propertyId: number;
   name: string;
-  cost: number;
   address: string;
+  details: string;
+  cost: number;
   area: number;
   areaUnit: string;
   type: string;
-  details: string;
+  pincode: string;
+  city: string;
+  state: string;
+  country: string;
+  locality: string;
   imageUrl: string;
 }
 
-// Define initial state shape
+interface Filters {
+  city?: string;
+  state?: string;
+  locality?: string;
+  country?: string;
+  pincode?: string;
+  minCost: number | null;
+  maxCost: number | null;
+  minArea: number | null;
+  maxArea: number | null;
+  propertyType: string | null;
+  details: string | null;
+}
+
 interface PropertyState {
   properties: Property[];
-  totalPages: number;
   currentPage: number;
+  totalPages: number;
   loading: boolean;
   error: string | null;
-  selectedProperty: Property | null; 
-  filters: {
-    minCost: number | null;
-    maxCost: number | null;
-    minArea: number | null;
-    maxArea: number | null;
-    propertyType: string | null;
-    details: string | null;
-  };
+  selectedProperty: Property | null;
+  filters: Filters;
 }
 
 const initialState: PropertyState = {
   properties: [],
-  totalPages: 1,
   currentPage: 1,
+  totalPages: 1,
   loading: false,
-  error: null, 
+  error: null,
   selectedProperty: null,
   filters: {
     minCost: null,
@@ -49,28 +60,117 @@ const initialState: PropertyState = {
 };
 
 // Async thunk to fetch properties with pagination and filters
+// export const fetchProperties = createAsyncThunk(
+//   'properties/fetchProperties',
+//   async (page: any[], { getState, rejectWithValue }) => {
+//     const state = getState() as { properties: PropertyState }; // Get the state of properties
+//     const filters = state.properties.filters; // Extract current filters from state
+
+//     // Debugging: log `page` and `filters` to check their types and values
+//     console.log('Page:', page, 'Type:', typeof page);
+
+//     // Extract property IDs from the `page` array
+//     const propertyIds = page.map((property) => property.propertyId);
+//     console.log('Property IDs:', propertyIds); // Debugging: check extracted IDs
+
+//     // Construct the query string with filters and pagination parameters
+//     const queryParams: string[] = [];
+
+//     // Add property IDs to the query string
+//     if (propertyIds.length > 0) {
+//       queryParams.push(`propertyIds=${propertyIds.join(',')}`);
+//     }
+
+//     // Helper function to validate and add query parameters
+//     const addQueryParam = (key: string, value: any) => {
+//       if (
+//         value !== null &&
+//         value !== undefined &&
+//         (typeof value === 'string' || typeof value === 'number')
+//       ) {
+//         queryParams.push(`${key}=${encodeURIComponent(value)}`);
+//       } else if (typeof value === 'object') {
+//         console.warn(`Invalid value for key '${key}':`, value);
+//       }
+//     };
+
+//     // Add filters to the query parameters
+//     addQueryParam('minCost', filters.minCost);
+//     addQueryParam('maxCost', filters.maxCost);
+//     addQueryParam('minArea', filters.minArea);
+//     addQueryParam('maxArea', filters.maxArea);
+//     addQueryParam('propertyType', filters.propertyType);
+//     addQueryParam('details', filters.details);
+
+//     // Location filters
+//     addQueryParam('city', filters.city);
+//     addQueryParam('state', filters.state);
+//     addQueryParam('locality', filters.locality);
+//     addQueryParam('country', filters.country);
+//     addQueryParam('pincode', filters.pincode);
+
+//     try {
+//       const url = `http://localhost:8080/api/properties?${queryParams.join('&')}`;
+//       console.log('Constructed URL:', url); // Debugging URL construction
+//       const response = await fetch(url);
+
+//       if (!response.ok) {
+//         // If the response status is not OK, reject the promise with a custom message
+//         throw new Error('Failed to fetch properties from the server');
+//       }
+//       const result = await response.json();
+
+//       // Apply frontend filtering to ensure only relevant properties are shown
+//       const filteredProperties = result.data.filter((property: any) =>
+//         propertyIds.includes(property.propertyId)
+//       );
+
+//       console.log('Filtered Properties:', filteredProperties);
+
+//       return {
+//         properties: filteredProperties,
+//         totalPages: result.totalPages,
+//         currentPage: result.currentPage,
+//       };
+//     } catch (error) {
+//       console.error('Error fetching properties:', error);
+//       return rejectWithValue('Failed to fetch properties. Please try again later.');
+//     }
+//   }
+// );
+
+// Async thunk to fetch properties with pagination and filters
 export const fetchProperties = createAsyncThunk(
   'properties/fetchProperties',
-  async (page: number, { getState, rejectWithValue }) => {
-    const state = getState() as { properties: PropertyState }; // Get the state of properties
-    const filters = state.properties.filters; // Extract current filters from state
-
-    // Construct the query string with filters and pagination parameters
+  async (params: Record<string, any>, { rejectWithValue }) => {
     const queryParams: string[] = [];
-    queryParams.push(`page=${page}`);
-    if (filters.minCost !== null) queryParams.push(`minCost=${filters.minCost}`);
-    if (filters.maxCost !== null) queryParams.push(`maxCost=${filters.maxCost}`);
-    if (filters.minArea !== null) queryParams.push(`minArea=${filters.minArea}`);
-    if (filters.maxArea !== null) queryParams.push(`maxArea=${filters.maxArea}`);
-    if (filters.propertyType) queryParams.push(`propertyType=${filters.propertyType}`);
-    if (filters.details) queryParams.push(`details=${filters.details}`);
+
+    // Helper function to validate and add query parameters
+    const addQueryParam = (key: string, value: any) => {
+      if (
+        value !== null &&
+        value !== undefined &&
+        (typeof value === 'string' || typeof value === 'number')
+      ) {
+        queryParams.push(`${key}=${encodeURIComponent(value)}`);
+      }
+    };
+
+    // Add all necessary query parameters from params
+    for (const key in params) {
+      if (params[key] !== undefined) {
+        addQueryParam(key, params[key]);
+      }
+    }
 
     try {
-      const response = await fetch(`http://localhost:8080/api/properties?${queryParams.join('&')}`);
+      const url = `http://localhost:8080/api/properties?${queryParams.join('&')}`;
+      const response = await fetch(url);
+
       if (!response.ok) {
-        // If the response status is not OK, reject the promise with a custom message
         throw new Error('Failed to fetch properties from the server');
       }
+
       const result = await response.json();
 
       return {
@@ -79,7 +179,6 @@ export const fetchProperties = createAsyncThunk(
         currentPage: result.currentPage,
       };
     } catch (error) {
-      console.error('Error fetching properties:', error);
       return rejectWithValue('Failed to fetch properties. Please try again later.');
     }
   }
@@ -94,8 +193,8 @@ const propertySlice = createSlice({
       state.currentPage = action.payload;
     },
     setSelectedProperty(state, action) {
-        state.selectedProperty = action.payload;
-      },
+      state.selectedProperty = action.payload;
+    },
     // You can add other filters-related reducers here if needed
     setFilter: (state, action) => {
       const { name, value } = action.payload;
@@ -137,6 +236,6 @@ const propertySlice = createSlice({
   },
 });
 
-export const { setCurrentPage, setFilter, resetFilters, setSelectedProperty , editPropertyById, deletePropertyById} = propertySlice.actions;
+export const { setCurrentPage, setFilter, resetFilters, setSelectedProperty, editPropertyById, deletePropertyById } = propertySlice.actions;
 
 export default propertySlice.reducer;

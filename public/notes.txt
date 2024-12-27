@@ -112,3 +112,287 @@ const Register: React.FC = () => {
 };
 
 export default Register;
+.................
+
+import React, { useState } from "react";
+import axios from "axios";
+import debounce from "lodash/debounce";
+import { useNavigate } from "react-router-dom";
+import { useDispatch } from "react-redux";
+import { setSelectedProperty } from "../types/propertySlice.ts";
+import "./PropertySearch.css";
+
+interface Property {
+  propertyId: number;
+  name: string;
+  address: string;
+  details: string;
+}
+
+const PropertySearch: React.FC = () => {
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [suggestions, setSuggestions] = useState<Property[]>([]);
+//   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+
+  const debouncedSearch = debounce(async (query: string) => {
+    if (query.trim().length > 0) {
+      try {
+        const response = await axios.get<Property[]>(
+          `http://localhost:8080/api/search?query=${query}`
+        );
+        console.log(response.data);
+        setSuggestions(response.data);
+      } catch (error) {
+        console.error("Error fetching search suggestions", error);
+        setSuggestions([]);
+      }
+    } else {
+      setSuggestions([]);
+    }
+  }, 300);
+
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const query = e.target.value;
+    setSearchTerm(query);
+    debouncedSearch(query);
+  };
+
+
+  const handleSelectProperty = (property: Property) => {
+    setSearchTerm(property.name);
+    setSuggestions([]);
+    dispatch(setSelectedProperty(property));  
+    navigate(`/property-details/${property.propertyId}`);
+  };
+
+//   const handleSearchButtonClick = () => {
+//     const selectedProperty = suggestions.find((prop) =>
+//       prop.name.toLowerCase().includes(searchTerm.toLowerCase())  // Allow for partial matches (case-insensitive)
+//     );
+  
+//     if (selectedProperty) {
+//       dispatch(setSelectedProperty(selectedProperty));  // Dispatch selected property
+//       navigate(`/property-details/${selectedProperty.propertyId}`);
+//     } else {
+//       alert("No property found with the specified search term");
+//     }
+//   };
+const handleSearchButtonClick = () => {
+    if (!searchTerm) {
+      alert("Please enter a search term.");
+      return;
+    }
+  
+    const filteredProperties = suggestions.filter((prop) =>
+      prop.name.toLowerCase().includes(searchTerm.toLowerCase()) // Allow for partial matches (case-insensitive)
+    );
+  
+    if (filteredProperties.length > 0) {
+      // If there's at least one matching property, dispatch the selected property
+      const selectedProperty = filteredProperties[0];  // Choose the first match, or provide a UI for selecting
+      dispatch(setSelectedProperty(selectedProperty));
+      navigate(`/property-details/${selectedProperty.propertyId}`);
+    } else {
+      // No matching properties found, display a user-friendly message
+      alert("No property found with the specified search term.");
+    }
+  };
+  
+  return (
+    <div className="property-search">
+      <input
+        type="text"
+        placeholder="Search properties..."
+        value={searchTerm}
+        onChange={handleSearch}
+        className="search-input"
+      />
+      <button
+        onClick={handleSearchButtonClick}
+        disabled={!searchTerm}
+        className="search-button"
+      >
+        Search
+      </button>
+      {suggestions.length > 0 && (
+        <ul className="suggestions-dropdown">
+          {suggestions.map((property) => (
+            <li
+              key={property.propertyId}
+              className="suggestion-item"
+              onClick={() => handleSelectProperty(property)}
+            >
+              {property.name} - {property.details} ({property.address})
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+};
+
+export default PropertySearch;
+
+
+// PropertyList.tsx
+
+import React, { useEffect } from "react";
+import { useSelector, useDispatch } from "react-redux";
+import { fetchProperties, setCurrentPage, setFilter, deletePropertyById } from "../types/propertySlice.ts";
+import { useNavigate } from "react-router-dom";
+import { setSelectedProperty } from "../types/propertySlice.ts";
+import { RootState, AppDispatch } from "../types/store.ts";
+import { MdEdit, MdDelete } from "react-icons/md";
+import FilterComponent from "./FilterComponent.tsx";
+import "./PropertyList.css";
+import axios from "axios"; // Importing axios
+
+const PropertyList: React.FC = () => {
+  const dispatch = useDispatch<AppDispatch>();
+  const navigate = useNavigate();
+
+  // Select state from the Redux store
+  const { properties, currentPage, totalPages, loading, error, filters } = useSelector(
+    (state: RootState) => state.properties
+  );
+  console.log(properties);
+  console.log("Error in Redux state:", error);
+
+  // Fetch properties on component mount or when filters or page changes
+  useEffect(() => {
+    dispatch(fetchProperties(currentPage));
+  }, [dispatch, currentPage, filters]);
+
+  const handleFilterChange = (name: string, value: string) => {
+    dispatch(setFilter({ name, value }));
+  };
+
+  // Pagination handlers
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      dispatch(setCurrentPage(currentPage + 1)); // Just update the page
+    }
+  };
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) {
+      dispatch(setCurrentPage(currentPage - 1)); // Just update the page
+    }
+  };
+
+  // Edit Property Click
+  const handleEditClick = (property: any) => {
+    dispatch(setSelectedProperty(property));
+    navigate(`/edit-property/${property.propertyId}`);
+  };
+
+  // Delete Property
+  const handleDeleteClick = (propertyId: number) => {
+    if (window.confirm("Are you sure you want to delete this property?")) {
+      axios
+        .delete(`http://localhost:8080/api/delete-property/${propertyId}`)
+        .then((response) => {
+          dispatch(deletePropertyById(propertyId)); // Dispatching action after successful deletion
+          navigate('/');
+        })
+        .catch((error) => {
+          console.error("Error deleting property:", error);
+        });
+    }
+  };
+
+  return (
+    <div className="property-list-container">
+      <h1 className="heading">Property List</h1>
+
+      {/* Filters Section */}
+      <FilterComponent onFilterChange={handleFilterChange} />
+
+      {/* Properties List Section */}
+      {loading ? (
+        <p>Loading properties...</p>
+      ) : error ? (
+        <div className="error-message">
+          <div className="error-title">Something Went Wrong</div>
+          <div className="error-detail">{error}</div>
+        </div>
+      ) : properties.length > 0 ? (
+        <div className="property-list">
+          <ul className="unordered-list">
+            {properties.map((property) => (
+              <li key={property.propertyId} className="property-item">
+                <div className="positioning">
+                  <div className="property-image">
+                    <img
+                      src={`http://localhost:8080${property.imageUrl}`}
+                      alt={property.name}
+                    />
+                  </div>
+                  <div className="property-details">
+                    <h2>{property.name}</h2>
+                    <p>
+                      <strong>Cost:</strong> ₹{property.cost.toLocaleString()}
+                    </p>
+                    <p>
+                      <strong>Address:</strong> {property.address}
+                    </p>
+                    <p>
+                      <strong>Area:</strong> {property.area} {property.areaUnit}
+                    </p>
+                    <p>
+                      <strong>Type:</strong> {property.type}
+                    </p>
+                    <p>
+                      <strong>Details:</strong> {property.details}
+                    </p>
+                  </div>
+                  <div className="property-actions">
+                    <button
+                      className="icon-button edit-button"
+                      onClick={() => handleEditClick(property)}
+                    >
+                      <MdEdit />
+                    </button>
+                    <button
+                      className="icon-button delete-button"
+                      onClick={() => handleDeleteClick(property.propertyId)}
+                    >
+                      <MdDelete />
+                    </button>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : (
+        <p>No properties available.</p>
+      )}
+
+      {/* Pagination Controls */}
+      <div className="pagination">
+        <button
+          onClick={handlePrevPage}
+          disabled={currentPage === 1}
+          className="pagination-button"
+        >
+          Previous
+        </button>
+        <span>
+          Page {currentPage} of {totalPages}
+        </span>
+        <button
+          onClick={handleNextPage}
+          disabled={currentPage === totalPages}
+          className="pagination-button"
+        >
+          Next
+        </button>
+      </div>
+    </div>
+  );
+};
+
+export default PropertyList;

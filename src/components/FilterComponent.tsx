@@ -1,18 +1,21 @@
 import React from "react";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import { RootState } from "../types/store.ts"; // Path to your Redux store file
+import { setFilter } from "../types/propertySlice.ts"; // Path to your actions
+
 import './FilterComponent.css';
 
 interface FilterComponentProps {
   onFilterChange: (name: string, value: string) => void;
 }
 
-const FilterComponent: React.FC<FilterComponentProps> = ({ onFilterChange }) => {
-  const filters = useSelector((state: RootState) => state.filters);
+const FilterComponent: React.FC<FilterComponentProps> = () => {
+  const dispatch = useDispatch();
+  const filters = useSelector((state: RootState) => state.properties.filters);
 
   const handleFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const { name, value } = e.target;
-    onFilterChange(name, value); // Pass the change to the parent component
+    dispatch(setFilter({ name, value })); // Dispatch the filter change to Redux
   };
 
   return (

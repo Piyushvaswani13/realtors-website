@@ -1,117 +1,182 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, ChangeEvent } from "react";
 import axios from "axios";
-import debounce from "lodash/debounce";
-import { useNavigate } from "react-router-dom";
-import { useDispatch } from "react-redux";
-import { setSelectedProperty } from "../types/propertySlice.ts";
+import debounce from "lodash.debounce";
+import { useNavigate, useLocation } from "react-router-dom";
 import "./PropertySearch.css";
 
-interface Property {
-  propertyId: number;
-  name: string;
-  address: string;
-  details: string;
+interface CategorizedResults {
+  city: string[];
+  state: string[];
+  locality: string[];
+  country: string[];
+  pincode: string[];
 }
 
 const PropertySearch: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>("");
-  const [suggestions, setSuggestions] = useState<Property[]>([]);
-//   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
-  const navigate = useNavigate();
-  const dispatch = useDispatch();
+  const [searchResults, setSearchResults] = useState<CategorizedResults>({
+    city: [],
+    state: [],
+    locality: [],
+    country: [],
+    pincode: [],
+  });
+  const [filteredProperties, setFilteredProperties] = useState<any[]>([]); // Store filtered properties here
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
 
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Debounced search function (defined outside useEffect for better performance)
   const debouncedSearch = debounce(async (query: string) => {
-    if (query.trim().length > 0) {
-      try {
-        const response = await axios.get<Property[]>(
-          `http://localhost:8080/api/search?query=${query}`
-        );
-        console.log(response.data);
-        setSuggestions(response.data);
-      } catch (error) {
-        console.error("Error fetching search suggestions", error);
-        setSuggestions([]);
-      }
-    } else {
-      setSuggestions([]);
+    if (!query.trim()) {
+      setSearchResults({
+        city: [],
+        state: [],
+        locality: [],
+        country: [],
+        pincode: [],
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await axios.get<CategorizedResults>(
+        "http://localhost:8080/api/search", // Adjust the API endpoint accordingly
+        { params: { query: query } }
+      );
+      setSearchResults(response.data);
+    } catch (err) {
+      console.error("Error fetching search results:", err);
+      setError("Failed to fetch search results. Please try again.");
+      setSearchResults({
+        city: [],
+        state: [],
+        locality: [],
+        country: [],
+        pincode: [],
+      });
+    } finally {
+      setIsLoading(false);
     }
   }, 300);
 
-  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const query = e.target.value;
-    setSearchTerm(query);
-    debouncedSearch(query);
-  };
+  // Effect to trigger search when searchTerm changes
+  useEffect(() => {
+    debouncedSearch(searchTerm);
 
+    // Cleanup debounce on unmount
+    return () => {
+      debouncedSearch.cancel();
+    };
+  }, [searchTerm]); // Only search term is the dependency
 
-  const handleSelectProperty = (property: Property) => {
-    setSearchTerm(property.name);
-    setSuggestions([]);
-    dispatch(setSelectedProperty(property));  
-    navigate(`/property-details/${property.propertyId}`);
-  };
+  // Effect to fetch filtered properties based on URL params
+  useEffect(() => {
+    const queryParams = new URLSearchParams(location.search);
+    const category = queryParams.get("category");
+    const value = queryParams.get("value");
 
-//   const handleSearchButtonClick = () => {
-//     const selectedProperty = suggestions.find((prop) =>
-//       prop.name.toLowerCase().includes(searchTerm.toLowerCase())  // Allow for partial matches (case-insensitive)
-//     );
-  
-//     if (selectedProperty) {
-//       dispatch(setSelectedProperty(selectedProperty));  // Dispatch selected property
-//       navigate(`/property-details/${selectedProperty.propertyId}`);
-//     } else {
-//       alert("No property found with the specified search term");
-//     }
-//   };
-const handleSearchButtonClick = () => {
-    if (!searchTerm) {
-      alert("Please enter a search term.");
-      return;
+    if (category && value) {
+      setIsLoading(true);
+      setError(null);
+
+      // Fetch filtered properties
+      axios
+        .get("http://localhost:8080/api/properties", { params: { [category]: value } })
+        .then((response) => {
+          console.log("Filtered Properties:", response.data);
+          setFilteredProperties(response.data); // Store the filtered properties
+        })
+        .catch((err) => {
+          console.error("Error fetching filtered properties:", err);
+          setError("Failed to fetch properties. Please try again.");
+        })
+        .finally(() => {
+          setIsLoading(false);
+        });
     }
-  
-    const filteredProperties = suggestions.filter((prop) =>
-      prop.name.toLowerCase().includes(searchTerm.toLowerCase()) // Allow for partial matches (case-insensitive)
-    );
-  
-    if (filteredProperties.length > 0) {
-      // If there's at least one matching property, dispatch the selected property
-      const selectedProperty = filteredProperties[0];  // Choose the first match, or provide a UI for selecting
-      dispatch(setSelectedProperty(selectedProperty));
-      navigate(`/property-details/${selectedProperty.propertyId}`);
-    } else {
-      // No matching properties found, display a user-friendly message
-      alert("No property found with the specified search term.");
-    }
+  }, [location.search]); // Fetch properties when the search params change
+
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
   };
-  
+
+  const handleSelectResult = (category: string, value: string) => {
+    setSearchTerm(value);
+    setSearchResults({
+      city: [],
+      state: [],
+      locality: [],
+      country: [],
+      pincode: [],
+    });
+
+    // Construct the URL with the desired query parameters
+    const queryParams = new URLSearchParams();
+    queryParams.set("category", category);
+    queryParams.set("value", value);
+
+    // Use the navigate function to redirect to the new URL
+    navigate(`/properties?${queryParams.toString()}`);
+  };
+
   return (
-    <div className="property-search">
+    <div className="property-search-container">
       <input
         type="text"
-        placeholder="Search properties..."
+        placeholder="Search by city, state, locality, country, or pincode"
         value={searchTerm}
-        onChange={handleSearch}
+        onChange={handleInputChange}
         className="search-input"
+        aria-label="Property Search"
       />
-      <button
-        onClick={handleSearchButtonClick}
-        disabled={!searchTerm}
-        className="search-button"
-      >
-        Search
-      </button>
-      {suggestions.length > 0 && (
-        <ul className="suggestions-dropdown">
-          {suggestions.map((property) => (
-            <li
-              key={property.propertyId}
-              className="suggestion-item"
-              onClick={() => handleSelectProperty(property)}
-            >
-              {property.name} - {property.details} ({property.address})
-            </li>
+      {isLoading && <div className="loading">Loading...</div>}
+      {error && <div className="error-message">{error}</div>}
+      {searchTerm && (
+        <div className="search-results-dropdown">
+          {Object.entries(searchResults).map(([category, values]) => (
+            values.length > 0 && (
+              <div key={category} className="search-category">
+                <h4 className="category-title">
+                  {category.charAt(0).toUpperCase() + category.slice(1)}
+                </h4>
+                <ul>
+                  {values.map((value, index) => (
+                    <li
+                      key={index}
+                      className="search-result-item"
+                      onClick={() => handleSelectResult(category, value)}
+                    >
+                      {value}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )
           ))}
-        </ul>
+        </div>
+      )}
+
+      {/* Display filtered properties */}
+      {filteredProperties.length > 0 && (
+        <div className="filtered-properties">
+          <h3>Filtered Properties</h3>
+          <div className="properties-list">
+            {filteredProperties.map((property) => (
+              <div key={property.id} className="property-card">
+                <img src={property.image} alt={property.name} />
+                <h4>{property.name}</h4>
+                <p>{property.description}</p>
+                <span>{property.price}</span>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );

@@ -1,63 +1,78 @@
-// PropertyList.tsx
-
 import React, { useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { fetchProperties, setCurrentPage, setFilter, deletePropertyById } from "../types/propertySlice.ts";
-import { useNavigate } from "react-router-dom";
-import { setSelectedProperty } from "../types/propertySlice.ts";
-import { RootState, AppDispatch } from "../types/store.ts";
-import { MdEdit, MdDelete } from "react-icons/md";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import axios from "axios";
+import { RootState, AppDispatch } from "../types/store";
+import { fetchProperties, setCurrentPage, setFilter, deletePropertyById, setSelectedProperty } from "../types/propertySlice.ts";
 import FilterComponent from "./FilterComponent.tsx";
+import { MdEdit, MdDelete } from "react-icons/md";
 import "./PropertyList.css";
-import axios from "axios"; // Importing axios
 
 const PropertyList: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  // Extract query parameters
+  const category = searchParams.get("category");
+  const value = searchParams.get("value");
 
   // Select state from the Redux store
   const { properties, currentPage, totalPages, loading, error, filters } = useSelector(
     (state: RootState) => state.properties
   );
-  console.log(properties);
-  console.log("Error in Redux state:", error);
 
-  // Fetch properties on component mount or when filters or page changes
   useEffect(() => {
-    dispatch(fetchProperties(currentPage));
-  }, [dispatch, currentPage, filters]);
+    const fetchCategorizedProperties = async () => {
+      try {
+        const params: Record<string, any> = {
+          page: currentPage,
+          limit: 9,
+          ...filters,
+        };
+
+        // Dynamically add category and value if they exist
+        if (category && value) {
+          params[category] = value;
+        }
+
+        // Dispatch the fetchProperties thunk with params
+        dispatch(fetchProperties(params));
+      } catch (err) {
+        console.error("Error fetching properties:", err);
+      }
+    };
+
+    fetchCategorizedProperties();
+  }, [dispatch, currentPage, filters, category, value]);
 
   const handleFilterChange = (name: string, value: string) => {
     dispatch(setFilter({ name, value }));
   };
 
-  // Pagination handlers
   const handleNextPage = () => {
     if (currentPage < totalPages) {
-      dispatch(setCurrentPage(currentPage + 1)); // Just update the page
+      dispatch(setCurrentPage(currentPage + 1));
     }
   };
 
   const handlePrevPage = () => {
     if (currentPage > 1) {
-      dispatch(setCurrentPage(currentPage - 1)); // Just update the page
+      dispatch(setCurrentPage(currentPage - 1));
     }
   };
 
-  // Edit Property Click
   const handleEditClick = (property: any) => {
     dispatch(setSelectedProperty(property));
     navigate(`/edit-property/${property.propertyId}`);
   };
 
-  // Delete Property
   const handleDeleteClick = (propertyId: number) => {
     if (window.confirm("Are you sure you want to delete this property?")) {
       axios
         .delete(`http://localhost:8080/api/delete-property/${propertyId}`)
-        .then((response) => {
-          dispatch(deletePropertyById(propertyId)); // Dispatching action after successful deletion
-          navigate('/');
+        .then(() => {
+          dispatch(deletePropertyById(propertyId));
         })
         .catch((error) => {
           console.error("Error deleting property:", error);
@@ -114,12 +129,14 @@ const PropertyList: React.FC = () => {
                     <button
                       className="icon-button edit-button"
                       onClick={() => handleEditClick(property)}
+                      aria-label={`Edit ${property.name}`}
                     >
                       <MdEdit />
                     </button>
                     <button
                       className="icon-button delete-button"
                       onClick={() => handleDeleteClick(property.propertyId)}
+                      aria-label={`Delete ${property.name}`}
                     >
                       <MdDelete />
                     </button>
