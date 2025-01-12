@@ -3,7 +3,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import axios from "axios";
 import { RootState, AppDispatch } from "../types/store";
-import { fetchProperties, setCurrentPage, setFilter, deletePropertyById, setSelectedProperty } from "../types/propertySlice.ts";
+import { fetchProperties, setCurrentPage, setFilter, deletePropertyById, setSelectedProperty, Property } from "../types/propertySlice.ts";
 import FilterComponent from "./FilterComponent.tsx";
 import { MdEdit, MdDelete } from "react-icons/md";
 import "./PropertyList.css";
@@ -21,6 +21,10 @@ const PropertyList: React.FC = () => {
   const { properties, currentPage, totalPages, loading, error, filters } = useSelector(
     (state: RootState) => state.properties
   );
+  
+  console.log("propertiees",properties);
+
+    const {userId,role} = useSelector((state: RootState) => state.auth);
 
   useEffect(() => {
     const fetchCategorizedProperties = async () => {
@@ -29,7 +33,18 @@ const PropertyList: React.FC = () => {
           page: currentPage,
           limit: 9,
           ...filters,
+          
         };
+
+        //  Add userId dynamically if the user is a BUILDER
+        //  if (role && role === 'BUILDER' && userId) {
+        //   params.userId = userId;
+        //   params.role = role;
+        // }
+        // if ( role === 'BUILDER' ) {
+          
+        //   params.role = role;
+        // }
 
         // Dynamically add category and value if they exist
         if (category && value) {
@@ -70,15 +85,33 @@ const PropertyList: React.FC = () => {
   const handleDeleteClick = (propertyId: number) => {
     if (window.confirm("Are you sure you want to delete this property?")) {
       axios
-        .delete(`http://localhost:8080/api/delete-property/${propertyId}`)
+      .post(`http://localhost:8080/api/delete-property/${propertyId}?userId=${userId}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+        },
+        withCredentials: false, 
+      })
         .then(() => {
-          dispatch(deletePropertyById(propertyId));
+          dispatch(
+            deletePropertyById({
+              propertyId: propertyId,
+              userId: userId,
+              role: role,
+            })
+          );
         })
         .catch((error) => {
           console.error("Error deleting property:", error);
         });
     }
   };
+
+  const shouldShowEditDeleteButton = (property: Property): boolean =>{
+    console.log('chor',property.createdBy.id.toString())
+    console.log('check',userId)
+return role === "ADMIN" || (role === "BUILDER" && property.createdBy.id.toString() === userId?.toString())
+  }
 
   return (
     <div className="property-list-container">
@@ -90,7 +123,7 @@ const PropertyList: React.FC = () => {
       {/* Properties List Section */}
       {loading ? (
         <p>Loading properties...</p>
-      ) : error ? (
+      ) : error ? (        //if error do this- ??'no error'
         <div className="error-message">
           <div className="error-title">Something Went Wrong</div>
           <div className="error-detail">{error}</div>
@@ -126,20 +159,25 @@ const PropertyList: React.FC = () => {
                     </p>
                   </div>
                   <div className="property-actions">
-                    <button
-                      className="icon-button edit-button"
-                      onClick={() => handleEditClick(property)}
-                      aria-label={`Edit ${property.name}`}
-                    >
-                      <MdEdit />
-                    </button>
-                    <button
-                      className="icon-button delete-button"
-                      onClick={() => handleDeleteClick(property.propertyId)}
-                      aria-label={`Delete ${property.name}`}
-                    >
-                      <MdDelete />
-                    </button>
+                    
+                  {shouldShowEditDeleteButton(property) ? (
+                      <>
+                        <button
+                          className="icon-button edit-button"
+                          onClick={() => handleEditClick(property)}
+                          aria-label={`Edit ${property.name}`}
+                        >
+                          <MdEdit />
+                        </button>
+                        <button
+                          className="icon-button delete-button"
+                          onClick={() => handleDeleteClick(property.propertyId)}
+                          aria-label={`Delete ${property.name}`}
+                        >
+                          <MdDelete />
+                        </button>
+                      </>
+                    ) : null}
                   </div>
                 </div>
               </li>

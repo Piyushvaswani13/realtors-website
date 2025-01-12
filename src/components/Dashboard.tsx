@@ -1,17 +1,19 @@
 // Dashboard.tsx
-import React, { useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useState } from "react";
+import { Link} from "react-router-dom";
 import "./Dashboard.css";
 import PropertySearch from "./PropertySearch.tsx";
+import AdminRequestPage from "./AdminRequestPage.tsx";
 
 const Dashboard: React.FC = () => {
-  const navigate = useNavigate();
+  const [user, setUser] = useState<{ role: string } | null>(null); // User state
+  // const navigate = useNavigate();
 
-  useEffect(() => {
-    if (!localStorage.getItem("token")) {
-      navigate("/login"); // Redirect to login if no token is found
-    }
-  }, [navigate]);
+  // useEffect(() => {
+  //   if (!localStorage.getItem("token")) {
+  //     navigate("/login"); // Redirect to login if no token is found
+  //   }
+  // }, [navigate]);
 
   return (
     <div className="dashboard">
@@ -32,6 +34,15 @@ const Dashboard: React.FC = () => {
       <main className="dashboard-content">
         <PropertySearch />
       </main>
+
+       {/* Additional content for admins */}
+       {user && user.role === 'ADMIN' && (
+        <div>
+          <h3>Admin Specific Section</h3>
+          <AdminRequestPage />
+        </div>
+      )}
+
     </div>
   );
 };

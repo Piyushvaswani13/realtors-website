@@ -1,70 +1,71 @@
-// Register.tsx
-import React, { useState } from "react";
-import axios from "axios";
-import { useNavigate } from "react-router-dom";
-import './Register.css';
+import React, { useState } from 'react';
+import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
+import "./Register.css";
 
-const Register: React.FC = () => {
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [role, setRole] = useState("CUSTOMER"); // Default role is 'Customer'
-  const [message, setMessage] = useState("");
+interface RegisterProps {
+  setUser: React.Dispatch<React.SetStateAction<any>>;
+}
+
+const Register: React.FC<RegisterProps> = ({ setUser }) => {
+  const [username, setUsername] = useState<string>('');
+  const [password, setPassword] = useState<string>('');
+  const [role, setRole] = useState<string>('CUSTOMER');
+  const [error, setError] = useState<string>('');
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await axios.post("http://localhost:8080/api/auth/register", {
-        name,
-        email,
-        password,
-        role,
-      });
-      setMessage(response.data.message);
-      // Automatically login user after successful registration by saving token
-      if (response.data.token) {
-        localStorage.setItem("token", response.data.token); // Store token in localStorage
-      }
-
-      if (role === "BUILDER") {
-        navigate("/request-sent"); // Navigate to request sent page for builder
-      } else {
-        navigate("/login"); // Redirect to login page
-      }
-    } catch (error) {
-      setMessage("Registration failed. Please try again.");
+      // API call with query parameters
+      const response = await axios.post(
+        `http://localhost:8080/api/auth/register?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&role=${encodeURIComponent(role)}`
+      );
+      setUser(response.data); // Assuming the response has user data
+      navigate('/login'); // Navigate to login after successful registration
+    } catch (err) {
+      setError('Error registering user.');
     }
   };
 
   return (
-    <div className="register">
-      <h2>Register</h2>
-      <form onSubmit={handleSubmit}>
-        <div>
-          <label>Name</label>
-          <input type="text" value={name} onChange={(e) => setName(e.target.value)} required />
-        </div>
-        <div>
-          <label>Email</label>
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-        </div>
-        <div>
-          <label>Password</label>
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-        </div>
-        <div>
-          <label>Role</label>
-          <select value={role} onChange={(e) => setRole(e.target.value)} required>
-            <option value="CUSTOMER">Customer</option>
-            <option value="BUILDER">Builder</option>
-          </select>
-        </div>
-        <button type="submit">Register</button>
-      </form>
-      {message && <p>{message}</p>}
-    </div>
-  );
+    <div className="register-container">
+    <h2 className="register-heading">Register</h2>
+    {error && <div className="error-message">{error}</div>}
+    <form onSubmit={handleSubmit} className="register-form">
+      <div className="input-group">
+        <label className="input-label">Username</label>
+        <input
+          type="text"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          className="input-field"
+        />
+      </div>
+      <div className="input-group">
+        <label className="input-label">Password</label>
+        <input
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          className="input-field"
+        />
+      </div>
+      <div className="input-group">
+        <label className="input-label">Role</label>
+        <select
+          value={role}
+          onChange={(e) => setRole(e.target.value)}
+          className="input-field"
+        >
+          <option value="CUSTOMER">Customer</option>
+          <option value="BUILDER">Builder</option>
+        </select>
+      </div>
+      <button type="submit" className="submit-button">Register</button>
+    </form>
+  </div>
+);
 };
 
 export default Register;

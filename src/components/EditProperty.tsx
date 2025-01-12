@@ -18,7 +18,10 @@ const EditProperty: React.FC = () => {
     state.properties.properties.find((p) => p.propertyId === Number(propertyId))
   );
 
-  // Local state for form data
+    const userId = useSelector((state: RootState) => state.auth.userId);
+    const role = useSelector((state: RootState) => state.auth.role);
+
+    
   const [formData, setFormData] = useState({
     name: property?.name || "",
     cost: property?.cost || 0,
@@ -34,7 +37,7 @@ const EditProperty: React.FC = () => {
     const { name, value } = e.target;
     setFormData((prevData) => ({
       ...prevData,
-      [name]: name === "cost" ? Number(value) : value, // Convert cost to a number
+      [name]: name === "cost" || name === "area" ? Number(value) : value,  // Convert cost to a number
     }));
   };
 
@@ -44,15 +47,23 @@ const EditProperty: React.FC = () => {
 
     // Send updated data to the backend API
     axios
-      .put(`http://localhost:8080/api/edit-property/${property.propertyId}`, formData)
+      .post(`http://localhost:8080/api/edit-property/${property.propertyId}?userId=${userId}`, formData)
       .then((response) => {
         console.log('Property updated successfully:', response.data);
         // Dispatch update action and navigate
-        dispatch(editPropertyById({ ...property, ...formData }));
-        navigate("/");
+        dispatch(
+          editPropertyById({
+            property: { ...property, ...formData },
+            userId: userId || "", 
+            role: role || "",     
+          })
+        );
+        
+        navigate("/dashboard");
       })
       .catch((error) => {
         console.error("Error updating property:", error);
+        alert(`Failed to update property: ${error.response?.data?.message || error.message}`);
       });
   };
 

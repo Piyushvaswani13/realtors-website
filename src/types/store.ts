@@ -1,11 +1,13 @@
 import { configureStore, ThunkAction, Action } from "@reduxjs/toolkit";
 import filterReducer from "../types/filterSlice.ts";
 import propertyReducer from "../types/propertySlice.ts";
+import authReducer from '../types/authSlice.ts';
 
 const store = configureStore({
   reducer: {
     filters: filterReducer,
     properties: propertyReducer,
+    auth: authReducer,
   },
 });
 

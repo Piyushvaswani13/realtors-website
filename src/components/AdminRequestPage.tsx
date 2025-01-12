@@ -1,47 +1,67 @@
-// AdminRequestPage.tsx
-import React, { useEffect, useState } from "react";
-import axios from "axios";
-import './AdminRequestPage.css';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
+
+export interface User {
+  id: number;
+  username: string;
+  role: string;  // Role will include CUSTOMER, ADMIN, or BUILDER
+  approved: boolean;
+}
 
 const AdminRequestPage: React.FC = () => {
-  const [pendingRequests, setPendingRequests] = useState<any[]>([]);
+  const [builders, setBuilders] = useState<User[]>([]);
+  const [error, setError] = useState<string>('');
+  const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchPendingRequests = async () => {
+    const fetchPendingBuilders = async () => {
       try {
-        const response = await axios.get("http://localhost:8080/api/admin/requests");
-        setPendingRequests(response.data);
-      } catch (error) {
-        console.error("Failed to fetch requests", error);
+        const response = await axios.get<User[]>('http://localhost:8080/api/auth/pending-approvals');
+        setBuilders(response.data);
+      } catch (err) {
+        setError('Error fetching pending builders.');
       }
     };
-    fetchPendingRequests();
+    fetchPendingBuilders();
   }, []);
 
-  const approveRequest = async (id: string) => {
+  const approveBuilder = async (userId: number) => {
     try {
-      await axios.post(`http://localhost:8080/api/admin/approve/${id}`);
-      setPendingRequests((prev) => prev.filter((request) => request.id !== id));
-    } catch (error) {
-      console.error("Failed to approve request", error);
+      await axios.post(`http://localhost:8080/api/auth/approve-builder?id=${userId}`);
+      setBuilders(builders.filter(builder => builder.id !== userId));
+      navigate('/dashboard');
+    } catch (err) {
+      setError('Error approving builder.');
     }
+  };
+
+  const rejectBuilder = (userId: number) => {
+    setBuilders(builders.filter(builder => builder.id !== userId));
   };
 
   return (
     <div className="admin-request-page">
-      <h2>Pending Builder Requests</h2>
-      {pendingRequests.length === 0 ? (
+      <h2>Builder Registration Requests</h2>
+      {error && <div className="error">{error}</div>}
+      {builders.length === 0 ? (
         <p>No pending requests.</p>
       ) : (
         <ul>
-          {pendingRequests.map((request) => (
-            <li key={request.id}>
-              {request.name} ({request.email}) - Role: {request.role}
-              <button onClick={() => approveRequest(request.id)}>Approve</button>
+          {builders.map((builder) => (
+            <li key={builder.id}>
+              <span>{builder.username} - {builder.role}</span>
+              {builder.role === 'BUILDER' && ( // Handle builders
+                <>
+                  <button onClick={() => approveBuilder(builder.id)}>Approve</button>
+                  <button onClick={() => rejectBuilder(builder.id)}>Reject</button>
+                </>
+              )}
             </li>
           ))}
         </ul>
       )}
+      <button onClick={() => navigate('/dashboard')}>Go to Dashboard</button> 
     </div>
   );
 };

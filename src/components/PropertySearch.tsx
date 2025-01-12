@@ -3,6 +3,7 @@ import axios from "axios";
 import debounce from "lodash.debounce";
 import { useNavigate, useLocation } from "react-router-dom";
 import "./PropertySearch.css";
+import { Property } from "../types/propertySlice";
 
 interface CategorizedResults {
   city: string[];
@@ -80,23 +81,19 @@ const PropertySearch: React.FC = () => {
     const queryParams = new URLSearchParams(location.search);
     const category = queryParams.get("category");
     const value = queryParams.get("value");
-
+  
     if (category && value) {
       setIsLoading(true);
       setError(null);
-
-      // Fetch filtered properties
+  
       axios
-        .get("http://localhost:8080/api/properties", { params: { [category]: value } })
-        .then((response) => {
-          console.log("Filtered Properties:", response.data);
-          setFilteredProperties(response.data); // Store the filtered properties
-        })
+        .get<Property[]>("http://localhost:8080/api/properties", { params: { [category]: value } })
+        .then((response) => setFilteredProperties(response.data))
         .catch((err) => {
           console.error("Error fetching filtered properties:", err);
           setError("Failed to fetch properties. Please try again.");
         })
-        .finally(() => {
+        .then(() => {
           setIsLoading(false);
         });
     }

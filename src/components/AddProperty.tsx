@@ -1,6 +1,8 @@
 import React, { useState, ChangeEvent, FormEvent } from "react";
 import axios from "axios";
 import "./AddProperty.css";
+import { useSelector } from 'react-redux';
+import { RootState } from '../types/store';
 
 // Define the property type
 interface Property {
@@ -15,6 +17,7 @@ interface Property {
 }
 
 const AddProperty: React.FC = () => {
+   const userId = useSelector((state: RootState) => state.auth.userId);
   const [property, setProperty] = useState<Property>({
     name: "",
     cost: "",
@@ -37,8 +40,9 @@ const AddProperty: React.FC = () => {
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
-      const response = await axios.post("http://localhost:8080/api/add-property", property);
-      setMessage(response.data.message || "Property added successfully!");
+      const response = await axios.post(`http://localhost:8080/api/add-property?userId=${userId}`, property);
+      const message = (response.data as { message: string }).message;
+      setMessage(message || "Property added successfully!");
       setStatus("success");
       setProperty({
         name: "",
@@ -58,6 +62,7 @@ const AddProperty: React.FC = () => {
 
   return (
     <div className="add-property-container">
+      <p>userId: {userId}</p>
       <h1>Add New Property</h1>
       {message && (
         <div className={`message ${status}`}>{message}</div>

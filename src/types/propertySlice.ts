@@ -1,13 +1,14 @@
-import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-
+import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
+import { RootState } from "../types/store";
+import { User } from "../components/AdminRequestPage";
 // Define Property type
-interface Property {
+export interface Property {
   propertyId: number;
   name: string;
   address: string;
   details: string;
   cost: number;
-  area: number;
+  area: string | number; 
   areaUnit: string;
   type: string;
   pincode: string;
@@ -16,6 +17,9 @@ interface Property {
   country: string;
   locality: string;
   imageUrl: string;
+  userId: string;
+  role: string;
+  createdBy: User ;
 }
 
 interface Filters {
@@ -40,7 +44,16 @@ interface PropertyState {
   error: string | null;
   selectedProperty: Property | null;
   filters: Filters;
+  // userId: string | null;  // Add userId here
+  // role: string | null;    // Add user role here
 }
+
+// interface GetPropertyResponseModel {
+//   properties: Property[];
+//   currentPage: number;
+//   totalPages: number;
+
+// }
 
 const initialState: PropertyState = {
   properties: [],
@@ -57,6 +70,8 @@ const initialState: PropertyState = {
     propertyType: null,
     details: null,
   },
+  // userId: null,  // Initialize userId
+  // role: null,
 };
 
 // Async thunk to fetch properties with pagination and filters
@@ -140,9 +155,17 @@ const initialState: PropertyState = {
 // );
 
 // Async thunk to fetch properties with pagination and filters
+
 export const fetchProperties = createAsyncThunk(
   'properties/fetchProperties',
-  async (params: Record<string, any>, { rejectWithValue }) => {
+  async (params: Record<string, any>, { rejectWithValue,getState }) => {
+    const state = getState() as RootState;
+    const { userId, role } = state.auth;
+
+    if ( !role) {
+      return rejectWithValue("User is not authenticated.");
+    }
+
     const queryParams: string[] = [];
 
     // Helper function to validate and add query parameters
@@ -156,6 +179,16 @@ export const fetchProperties = createAsyncThunk(
       }
     };
 
+     // Add userId for "BUILDER" role
+    //  if (role && role === 'BUILDER' && userId) {
+    //   addQueryParam('userId', userId);
+    //   addQueryParam('role', role);
+    // }
+
+    // if (role === "BUILDER" && userId) {
+    //   addQueryParam("userId", userId);
+    // }
+
     // Add all necessary query parameters from params
     for (const key in params) {
       if (params[key] !== undefined) {
@@ -163,15 +196,40 @@ export const fetchProperties = createAsyncThunk(
       }
     }
 
+    
+
     try {
+
+      // const response = await axios.get<GetPropertyResponseModel>(`http://localhost:8080/api/properties?${queryParams.join('&')} `, {
+      
+      //   headers: {
+      //     userId: userId
+      //   }
+      //  }) 
+
+      // const myHeaders = new Headers();
+      // myHeaders.append("userId", userId??'');
+      
+      // const requestOptions:RequestInit = {
+      //   method: "GET",
+      //   headers: myHeaders,
+      //   redirect: "follow"
+      // };
+      
       const url = `http://localhost:8080/api/properties?${queryParams.join('&')}`;
-      const response = await fetch(url);
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+         "userId": userId?.toString() || "", 
+        },
+      });
 
       if (!response.ok) {
         throw new Error('Failed to fetch properties from the server');
       }
 
       const result = await response.json();
+      console.log("Server Response:", result);
 
       return {
         properties: result.data,
@@ -195,7 +253,6 @@ const propertySlice = createSlice({
     setSelectedProperty(state, action) {
       state.selectedProperty = action.payload;
     },
-    // You can add other filters-related reducers here if needed
     setFilter: (state, action) => {
       const { name, value } = action.payload;
       state.filters[name] = value;
@@ -203,25 +260,71 @@ const propertySlice = createSlice({
     resetFilters: (state) => {
       state.filters = initialState.filters;
     },
-    editPropertyById: (state, action) => {
-      const index = state.properties.findIndex(
-        (p) => p.propertyId === action.payload.propertyId
-      );
-      if (index !== -1) {
-        state.properties[index] = action.payload;
+    // Add check before editing a property
+     editPropertyById: (state,action: PayloadAction<{ property: Property; userId: string; role: string }>) => {
+      const { property, userId, role } = action.payload;
+      if (role === 'ADMIN') {
+        const index = state.properties.findIndex(
+          (p) => p.propertyId === property.propertyId
+        );
+        if (index !== -1) {
+          state.properties[index] = property;
+        }
+      } else if (role === 'BUILDER' && property.userId === userId) {
+        // A builder can only edit their own properties
+        const index = state.properties.findIndex(
+          (p) => p.propertyId === property.propertyId && p.userId === userId
+        );
+        if (index !== -1) {
+          state.properties[index] = property;
+        }
+      } else {
+        console.log('Permission denied for editing this property');
       }
     },
-    deletePropertyById: (state, action) => {
-      state.properties = state.properties.filter(
-        (p) => p.propertyId !== action.payload
-      );
+    deletePropertyById: (
+      state,
+      action: PayloadAction<{ propertyId: number; userId: string |null; role:string |null  }>
+    ) => {
+      const { propertyId, userId, role } = action.payload;
+
+      if (role === "ADMIN") {
+        state.properties = state.properties.filter((p) => p.propertyId !== propertyId);
+      } else if (role === "BUILDER") {
+        const property = state.properties.find((p) => p.propertyId === propertyId);
+        if (property && property.userId === userId) {
+          state.properties = state.properties.filter((p) => p.propertyId !== propertyId);
+        } else {
+          console.error("Permission denied for deleting this property");
+        }
+      } else {
+        console.error("Permission denied for deleting this property");
+      }
+    },
+
+    // Add property with role-based checks
+    addProperty: (
+      state,
+      action: PayloadAction<{ property: Property; user: User; role: string }>
+    ) => {
+      const { property, user, role } = action.payload;
+
+      if (role === "ADMIN" || role === "BUILDER") {
+        const newProperty = {
+          ...property,
+          createdBy: user ,
+        };
+        state.properties.push(newProperty);
+      } else {
+        console.error("Permission denied for adding properties");
+      }
     },
   },
   extraReducers: (builder) => {
     builder
       .addCase(fetchProperties.pending, (state) => {
         state.loading = true;
-        state.error = null; // Clear error on new request
+        state.error = null;
       })
       .addCase(fetchProperties.fulfilled, (state, action) => {
         state.loading = false;
@@ -231,11 +334,12 @@ const propertySlice = createSlice({
       })
       .addCase(fetchProperties.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload as string; // Set the error message when the request fails
+        state.error = action.payload as string;
       });
   },
 });
 
-export const { setCurrentPage, setFilter, resetFilters, setSelectedProperty, editPropertyById, deletePropertyById } = propertySlice.actions;
+
+export const { setCurrentPage, setFilter, resetFilters, setSelectedProperty, editPropertyById, deletePropertyById,addProperty } = propertySlice.actions;
 
 export default propertySlice.reducer;
